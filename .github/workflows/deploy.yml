@@ -1,0 +1,38 @@
+name: Publish full comic
+on:
+  push:
+    branches: [main]
+    paths: [site.zip, index.html, reader.js, style.css, story.json, .github/workflows/deploy.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack comic assets and current reader source
+        run: |
+          mkdir -p _site
+          unzip -q site.zip -d _site
+          cp index.html reader.js style.css story.json _site/
+          test -f _site/index.html
+          test -f _site/story.json
+          test -f _site/audio/audio-manifest.json
+          test "$(find _site/images -type f -name '*.jpg' | wc -l)" -eq 40
+          test "$(find _site/audio -type f -name 'P*.mp3' | wc -l)" -eq 47
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
